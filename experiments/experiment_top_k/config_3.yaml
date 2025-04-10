@@ -5,7 +5,7 @@ data_dir: "./data"
 
 train_size: 1000
 val_size: 100
-test_size: 100
+test_size: 10
 
 bnb:
   load_in_4bit: true

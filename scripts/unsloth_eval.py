@@ -9,7 +9,6 @@ import pandas as pd
 import torch
 import yaml
 from sentence_transformers import SentenceTransformer, util
-from tqdm import tqdm
 from unsloth import FastLanguageModel
 
 
@@ -162,7 +161,7 @@ def evaluate_model(config_path):
     results = []
     logger.info("Starting evaluation")
 
-    for _, row in tqdm(val_df.iterrows(), total=len(val_df)):
+    for _, row in val_df.iterrows():
         # Extract components
         instruction, ground_truth, prompt = extract_components(row)
 
