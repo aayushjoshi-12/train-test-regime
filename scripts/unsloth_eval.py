@@ -162,7 +162,7 @@ def evaluate_model(config_path):
     results = []
     logger.info("Starting evaluation")
 
-    for row in tqdm(val_df.iterrows(), total=len(val_df)):
+    for _, row in tqdm(val_df.iterrows(), total=len(val_df)):
         # Extract components
         instruction, ground_truth, prompt = extract_components(row)
 
