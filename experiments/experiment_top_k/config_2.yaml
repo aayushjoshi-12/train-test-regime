@@ -25,6 +25,7 @@ training:
   load_best_model_at_end: True
   evaluation_strategy: "steps"
   group_by_length: True
+  optim: "paged_adamw_32bit"
 
 lora:
   r: 16
