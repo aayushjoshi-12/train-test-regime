@@ -147,7 +147,7 @@ def evaluate_model(config_path):
 
     # Load model
     logger.info(f"Loading model: {cfg['model_name']}")
-    model_path = cfg["model_dir"]
+    model_path = cfg["output_dir"]
     model, tokenizer = load_model(cfg, model_path)
 
     # Load dataset
