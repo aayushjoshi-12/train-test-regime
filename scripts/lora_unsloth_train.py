@@ -103,7 +103,7 @@ def create_training_args(cfg):
         gradient_accumulation_steps=cfg["training"]["gradient_accumulation_steps"],
         warmup_ratio=cfg["training"]["warmup_ratio"],
         optim=cfg["training"]["optim"],
-        learning_rate=cfg["training"]["learning_rate"],
+        learning_rate=float(cfg["training"]["learning_rate"]),
         weight_decay=cfg["training"]["weight_decay"],
         fp16=not torch.cuda.is_bf16_supported(),
         bf16=torch.cuda.is_bf16_supported(),
