@@ -78,6 +78,7 @@ def initialize_model(cfg):
         max_seq_length=4096,
         dtype=None,  # auto-detect
         quantization_config=bnb_config,
+        device_map="auto"
     )
 
     # Add LoRA configuration
@@ -88,7 +89,6 @@ def initialize_model(cfg):
         target_modules=cfg["lora"]["target_modules"],
         bias="none",
         modules_to_save=cfg["lora"]["modules_to_save"],
-        device_map="auto",
     )
 
     return model, tokenizer
