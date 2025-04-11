@@ -1,6 +1,6 @@
 experiment_name: "llama3-qlora-mortgage-p1.0"
 model_name: "meta-llama/Meta-Llama-3-8B"
-output_dir: "./models/experiment_top_k/llama3-qlora-mortgage"
+output_dir: "./models/experiment_top_k/llama-qlora-mortgage"
 data_dir: "./data"
 
 train_size: 1000
