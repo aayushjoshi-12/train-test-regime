@@ -1,11 +1,11 @@
-experiment_name: "llama3-qlora-mortgage-k40"
+experiment_name: "llama3-qlora-mortgage-temp1.0"
 model_name: "meta-llama/Meta-Llama-3-8B"
 output_dir: "./models/experiment_top_k/llama-qlora-mortgage"
 data_dir: "./data"
 
 train_size: 1000
 val_size: 100
-test_size: 10
+test_size: 100
 
 bnb:
   load_in_4bit: true
@@ -14,6 +14,7 @@ training:
   batch_size: 2
   num_epochs: 4
   gradient_accumulation_steps: 8
+  optim: "paged_adamw_32bit"
   warmup_ratio: 0.03
   learning_rate: 2e-5
   weight_decay: 0.001
@@ -25,7 +26,6 @@ training:
   load_best_model_at_end: True
   evaluation_strategy: "steps"
   group_by_length: True
-  optim: "paged_adamw_32bit"
 
 lora:
   r: 16
@@ -34,6 +34,6 @@ lora:
   modules_to_save: ["lm_head", "embed_tokens"]
 
 test:
-  temperature: 0.1
-  top_k: 40 # either top_k or top_p
+  temperature: 1.0
+  top_k: 50 # either top_k or top_p
   # top_p: 0.95 # either top_k or top_p
