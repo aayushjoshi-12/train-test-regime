@@ -1,13 +1,8 @@
 import torch
 from datasets import load_dataset
 from peft import LoraConfig, TaskType
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from trl import RewardConfig, RewardTrainer
-import pandas as pd
 
 model = AutoModelForSequenceClassification.from_pretrained("Qwen/Qwen2.5-3B")
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B")
@@ -44,13 +39,6 @@ dataset = load_dataset(
     data_files="./data/llama3-loan-mortgage-ranked-responses.csv",
 ).map(format_data)
 
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
-)
-
 lora_config = LoraConfig(
     r=16, lora_alpha=32, lora_dropout=0.1, bias="none", task_type=TaskType.SEQ_CLS
 )
@@ -61,7 +49,6 @@ reward_config = RewardConfig(
     learning_rate=2e-5,
     weight_decay=0.01,
     num_train_epochs=2,
-    quantization_config=bnb_config,
 )
 
 trainer = RewardTrainer(
