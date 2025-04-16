@@ -86,7 +86,8 @@ def initialize_model(cfg):
     model = AutoModelForSequenceClassification.from_pretrained(
         cfg["model_name"],
         quantization_config=quantization_config,
-        device_map="auto" if cfg.get("use_device_map", True) else None
+        device_map="auto" if cfg.get("use_device_map", True) else None,
+        token=os.getenv("HF_TOKEN"),
     )
     
     tokenizer = AutoTokenizer.from_pretrained(cfg["model_name"])
