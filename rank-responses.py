@@ -100,14 +100,21 @@ def main():
 
         # Create placeholders for rankings
         rankings = {}
+        # Create a 3-column grid layout
+        cols = st.columns(3)
+        
         for i, response_col in enumerate(response_columns, 1):
-            st.write(f"**Response {i}:**")
-            text = current_example[response_col].split("assistant", 1)[1].strip()
-            st.markdown(text)
-            st.divider()
-            rankings[response_col] = st.selectbox(
-                f"Rank for Response {i}", options=list(range(1, 8)), key=f"rank_{i}"
-            )
+            # Cycle through columns (i-1)%3 gives 0,1,2,0,1,2,...
+            with cols[(i-1) % 3]:
+                st.write(f"**Response {i}:**")
+                text = current_example[response_col].split("assistant", 1)[1].strip()
+                st.markdown(text)
+                rankings[response_col] = st.selectbox(
+                    f"Rank for Response {i}", 
+                    options=list(range(1, 8)), 
+                    key=f"rank_{i}"
+                )
+                st.divider()
 
         submit = st.form_submit_button("Submit Rankings")
 
