@@ -1,7 +1,7 @@
 experiment_name: "reward_model_llama3.2_1b"
 model_name: "meta-llama/Llama-3.2-1B"
 output_dir: "./models/reward_models/llama3.2-rm"
-data_file: "./data/reward_model_data.csv"
+data_file: "./data/llama3-loan-mortgage-ranked-responses.csv"
 max_length: 512
 use_device_map: true
 
