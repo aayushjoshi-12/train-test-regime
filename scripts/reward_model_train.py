@@ -7,6 +7,7 @@ from transformers import (
     BitsAndBytesConfig,
 )
 from trl import RewardConfig, RewardTrainer
+import pandas as pd
 
 model = AutoModelForSequenceClassification.from_pretrained("Qwen/Qwen2.5-3B")
 tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B")
@@ -41,7 +42,6 @@ def format_data(example):
 dataset = load_dataset(
     "csv",
     data_files="./data/llama3-loan-mortgage-ranked-responses.csv",
-    split=["train", "test"],
 ).map(format_data)
 
 bnb_config = BitsAndBytesConfig(
@@ -71,7 +71,6 @@ trainer = RewardTrainer(
     peft_config=lora_config,
     processing_class=tokenizer,
     train_dataset=dataset["train"],
-    eval_dataset=dataset["test"],
 )
 
 trainer.train()
