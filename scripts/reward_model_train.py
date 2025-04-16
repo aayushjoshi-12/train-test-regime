@@ -38,11 +38,11 @@ def format_data(example):
     }
 
 
-dataset = (
-    load_dataset("csv", data_files="./data/llama3-loan-mortgage-ranked-responses.csv")
-    .map(format_data)
-    .train_test_split(0.1, seed=42)
-)
+dataset = load_dataset(
+    "csv",
+    data_files="./data/llama3-loan-mortgage-ranked-responses.csv",
+    split=["train", "test"],
+).map(format_data)
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
