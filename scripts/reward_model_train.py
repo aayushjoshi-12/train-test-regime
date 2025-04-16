@@ -1,8 +1,11 @@
 import torch
-from bnb import BitsAndBytesConfig
 from datasets import load_dataset
 from peft import LoraConfig, TaskType
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
 from trl import RewardConfig, RewardTrainer
 
 model = AutoModelForSequenceClassification.from_pretrained("Qwen/Qwen2.5-3B")
