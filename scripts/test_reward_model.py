@@ -52,7 +52,7 @@ def test_model(config_path):
 
     # Load model and tokenizer
     logger.info(f"Loading model from: {cfg['model_path']}")
-    model = AutoModelForSequenceClassification.from_pretrained(cfg["model_path"])
+    model = AutoModelForSequenceClassification.from_pretrained(cfg["model_path"], token=os.getenv("HF_TOKEN"))
     tokenizer = AutoTokenizer.from_pretrained(cfg["model_path"])
     
     # Set padding token

@@ -29,7 +29,7 @@ lora:
   dropout: 0.05
   bias: "none"
 
-model_path: "./models/reward_models/qwen2.5-3b-rm"
+model_path: "./models/reward_models/qwen2.5-rm"
 test_data_file: "./data/llama3-loan-mortgage-ranked-responses.csv"
 num_test_examples: 50
 use_cuda: true
