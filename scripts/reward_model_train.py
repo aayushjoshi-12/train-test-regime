@@ -4,8 +4,8 @@ from peft import LoraConfig, TaskType
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from trl import RewardConfig, RewardTrainer
 
-model = AutoModelForSequenceClassification.from_pretrained("Qwen/Qwen2.5-3B")
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B")
+model = AutoModelForSequenceClassification.from_pretrained("gpt2")
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
 
 def format_data(example):
