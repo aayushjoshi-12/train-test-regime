@@ -6,6 +6,7 @@ from trl import RewardConfig, RewardTrainer
 
 model = AutoModelForSequenceClassification.from_pretrained("gpt2")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
+tokenizer.pad_token_id = tokenizer.eos_token_id
 model.config.pad_token_id = tokenizer.pad_token_id
 
 
