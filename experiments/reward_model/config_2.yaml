@@ -1,0 +1,35 @@
+experiment_name: "reward_model_qwen2.5_3b"
+model_name: "Qwen/Qwen2.5-3B"
+output_dir: "./models/reward_models/qwen2.5-rm"
+data_file: "./data/llama3-loan-mortgage-ranked-responses.csv"
+max_length: 512
+use_device_map: true
+
+quantization:
+  enabled: true
+  load_in_4bit: true
+  use_double_quant: true
+  quant_type: "nf4"
+  compute_dtype: "bfloat16"
+
+training:
+  batch_size: 21
+  gradient_accumulation_steps: 16
+  num_epochs: 3
+  optim: "paged_adamw_32bit"
+  warmup_ratio: 0.03
+  learning_rate: 5e-5
+  weight_decay: 0.001
+  lr_scheduler_type: "cosine"
+  mixed_precision: true
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  bias: "none"
+
+model_path: "./models/reward_models/qwen2.5-3b-rm"
+test_data_file: "./data/llama3-loan-mortgage-ranked-responses.csv"
+num_test_examples: 50
+use_cuda: true
