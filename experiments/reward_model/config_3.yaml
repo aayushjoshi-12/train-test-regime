@@ -1,0 +1,31 @@
+experiment_name: "reward_model_gpt2"
+model_name: "gpt2"
+output_dir: "./models/reward_models/gpt2-rm"
+data_file: "./data/llama3-loan-mortgage-ranked-responses.csv"
+max_length: 512
+use_device_map: true
+
+quantization:
+  enabled: false
+
+training:
+  batch_size: 32
+  gradient_accumulation_steps: 8
+  num_epochs: 3
+  optim: "adamw_torch"
+  warmup_ratio: 0.03
+  learning_rate: 5e-5
+  weight_decay: 0.001
+  lr_scheduler_type: "cosine"
+  mixed_precision: true
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  bias: "none"
+
+model_path: "./models/reward_models/gpt2-rm"
+test_data_file: "./data/llama3-loan-mortgage-ranked-responses.csv"
+num_test_examples: 50
+use_cuda: true
