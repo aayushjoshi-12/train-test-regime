@@ -151,6 +151,7 @@ def train_model(config_path):
         model=model,
         args=reward_config,
         peft_config=lora_config,
+        processing_class=tokenizer,
         train_dataset=dataset["train"],
         eval_dataset=dataset.get("validation") if "validation" in dataset else None,
     )
