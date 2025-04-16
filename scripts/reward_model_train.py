@@ -6,6 +6,7 @@ from trl import RewardConfig, RewardTrainer
 
 model = AutoModelForSequenceClassification.from_pretrained("gpt2")
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
+model.config.pad_token_id = tokenizer.pad_token_id
 
 
 def format_data(example):
@@ -60,5 +61,5 @@ trainer = RewardTrainer(
 )
 
 trainer.train()
-model.save_pretrained("./models/reward_model_qwen2.5-3b")
-tokenizer.save_pretrained("./models/reward_model_qwen2.5-3b")
+model.save_pretrained("./models/reward_model_gpt2")
+tokenizer.save_pretrained("./models/reward_model_gpt2")
