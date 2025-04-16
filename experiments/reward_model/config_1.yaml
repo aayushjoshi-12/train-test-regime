@@ -13,7 +13,7 @@ quantization:
   compute_dtype: "bfloat16"
 
 training:
-  batch_size: 21
+  batch_size: 1
   gradient_accumulation_steps: 8
   num_epochs: 3
   optim: "paged_adamw_32bit"

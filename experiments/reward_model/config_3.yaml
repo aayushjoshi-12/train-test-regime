@@ -9,9 +9,9 @@ quantization:
   enabled: false
 
 training:
-  batch_size: 32
+  batch_size: 21
   gradient_accumulation_steps: 8
-  num_epochs: 3
+  num_epochs: 1
   optim: "adamw_torch"
   warmup_ratio: 0.03
   learning_rate: 5e-5
