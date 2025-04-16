@@ -54,7 +54,6 @@ reward_config = RewardConfig(
 trainer = RewardTrainer(
     model=model,
     args=reward_config,
-    tokenizer=tokenizer,
     peft_config=lora_config,
     processing_class=tokenizer,
     train_dataset=dataset["train"],
