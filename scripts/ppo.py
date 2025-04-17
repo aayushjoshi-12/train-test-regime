@@ -9,7 +9,12 @@ from peft import LoraConfig
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import pandas as pd
 from datasets import Dataset
+import gc
 
+
+# Memory optimization: Clear any existing CUDA cache
+torch.cuda.empty_cache()
+gc.collect()
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -58,7 +63,7 @@ cateory: {row["category"]}<|eot_id|>
 
 df = pd.read_csv("./data/training_dataset.csv")
 
-sample_df = df.sample(1000, random_state=42)
+sample_df = df.sample(500, random_state=42)
 dataset = Dataset.from_pandas(
     sample_df.apply(format_data, axis=1, result_type="expand")
 )
@@ -69,7 +74,7 @@ def tokenize_function(examples):
         examples["text"],
         padding="max_length",
         truncation=True,
-        max_length=512,
+        max_length=256,
         return_tensors=None,
     )
 
@@ -103,7 +108,6 @@ peft_config = LoraConfig(
     target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
 )
 
-# Set gradient checkpointing
 policy.pretrained_model.gradient_checkpointing_enable()
 
 trainer = PPOTrainer(
@@ -116,6 +120,11 @@ trainer = PPOTrainer(
     train_dataset=dataset,
     peft_config=peft_config,
 )
+
+del df, sample_df
+gc.collect()
+torch.cuda.empty_cache()
+
 
 trainer.train()
 policy.save_pretrained("./models/llama3.1-ppo-w-llama3.2-rm")
