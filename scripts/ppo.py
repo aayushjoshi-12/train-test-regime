@@ -3,6 +3,7 @@ from transformers import (
     AutoModelForSequenceClassification,
     BitsAndBytesConfig,
     AutoTokenizer,
+    GenerationConfig,
 )
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import pandas as pd
@@ -25,6 +26,7 @@ value_model = AutoModelForSequenceClassification.from_pretrained(
 policy = AutoModelForCausalLMWithValueHead.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
+policy.generation_config = GenerationConfig(top_k=0, top_p=1.0)
 tokenizer = AutoTokenizer.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
