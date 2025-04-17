@@ -36,15 +36,15 @@ def format_data(row):
     text = f"""
 <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-{row["system_prompt"]}
+{row[0]}
 
-cateory: {row["category"]}<|eot_id|>
+cateory: {row[3]}<|eot_id|>
 <|start_header_id|>user<|end_header_id|>
 
-{row["instruction"]}<|eot_id|>
+{row[1]}<|eot_id|>
 <|start_header_id|>assistant<|end_header_id|>
 """
-    tokenizer.encode(text, return_tensors="pt")
+    tokenizer.encode_plus(text, return_tensors="pt")
     return {
         "input_ids": tokenizer.encode(text, return_tensors="pt")[0],
         "attention_mask": tokenizer.encode(text, return_tensors="pt")[0],
