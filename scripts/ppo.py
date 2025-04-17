@@ -1,9 +1,11 @@
+import unsloth
+import torch
 from transformers import (
     AutoModelForSequenceClassification,
     AutoModelForCausalLM,
-    AutoTokenizer,
     BitsAndBytesConfig,
 )
+from unsloth import FastLanguageModel
 from trl import PPOTrainer, PPOConfig
 import pandas as pd
 from datasets import Dataset
@@ -13,20 +15,20 @@ bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_use_double_quant=True,
     bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype="float16",
+    bnb_4bit_compute_dtype=torch.bfloat16,
 )
 
-tokenizer = AutoTokenizer.from_pretrained("../trained_models/llama3.1-mortgage-finetuned_v4")
-tokenizer.pad_token_id = tokenizer.eos_token_id
 reward_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/reward_models/llama3.2-rm", quantization_config=bnb_config
 )
 value_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/reward_models/llama3.2-rm", quantization_config=bnb_config
 )
-policy = AutoModelForCausalLM.from_pretrained(
+policy, tokenizer = FastLanguageModel.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
+
+tokenizer.pad_token = tokenizer.eos_token
 
 
 def format_data(row):
@@ -51,7 +53,6 @@ cateory: {row["category"]}<|eot_id|>
 
 df = (
     pd.read_csv("./data/training_dataset.csv")
-    .loc(["system_prompt", "instruction", "category"])
     .sample(1000, random_state=42)
     .map(lambda x: format_data(x))
 )
