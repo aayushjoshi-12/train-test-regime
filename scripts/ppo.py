@@ -49,23 +49,23 @@ cateory: {row["category"]}<|eot_id|>
 
 df = pd.read_csv("./data/training_dataset.csv")
 
-dataset = Dataset.from_pandas(
-    df.sample(1000, random_state=42).apply(format_data, axis=1, result_type="expand")
-)
+sample_df = df.sample(1000, random_state=42)
+dataset = Dataset.from_pandas(sample_df.apply(format_data, axis=1))
+
+def tokenize_function(examples):
+    return tokenizer(
+        examples["text"],
+        padding="max_length",
+        truncation=True,
+        max_length=512,
+        return_tensors=None,
+    )
 
 dataset = dataset.map(
-    lambda x: {
-        "input_ids": tokenizer.encode_plus(
-            x["text"],
-            padding=True,
-            truncation=True,
-            max_length=512,
-            return_tensors="pt",
-        )["input_ids"][0].tolist(),
-    },
-    batched=False,
+    tokenize_function,
+    batched=True,
+    remove_columns=["text"]
 )
-
 
 config = PPOConfig(
     learning_rate=1.41e-5,
