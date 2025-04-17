@@ -61,8 +61,6 @@ dataset = dataset.map(
     },
     batched=False
 )
-dataset = Dataset.from_dict(dataset).set_format("torch")
-
 
 config = PPOConfig(
     learning_rate=1.41e-5,
