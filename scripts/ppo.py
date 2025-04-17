@@ -2,7 +2,6 @@ import unsloth
 import torch
 from transformers import (
     AutoModelForSequenceClassification,
-    AutoModelForCausalLM,
     BitsAndBytesConfig,
 )
 from unsloth import FastLanguageModel
@@ -36,12 +35,12 @@ def format_data(row):
     text = f"""
 <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-{row[0]}
+{row['system_prompt']}<|eot_id|>
 
-cateory: {row[3]}<|eot_id|>
+cateory: {row['category']}<|eot_id|>
 <|start_header_id|>user<|end_header_id|>
 
-{row[1]}<|eot_id|>
+{row['instruction']}<|eot_id|>
 <|start_header_id|>assistant<|end_header_id|>
 """
     tokenizer.encode_plus(text, return_tensors="pt")
@@ -54,7 +53,7 @@ cateory: {row[3]}<|eot_id|>
 df = (
     pd.read_csv("./data/training_dataset.csv")
     .sample(1000, random_state=42)
-    .map(lambda x: format_data(x))
+    .apply(lambda x: format_data(x), axis=1)
 )
 dataset = Dataset.from_pandas(df)
 
