@@ -30,40 +30,40 @@ policy, tokenizer = FastLanguageModel.from_pretrained(
 
 tokenizer.pad_token = tokenizer.eos_token
 
+
 def format_data(row):
     """Format a data row into the expected evaluation format."""
     text = f"""
 <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-{row['system_prompt']}<|eot_id|>
+{row["system_prompt"]}<|eot_id|>
 
-cateory: {row['category']}<|eot_id|>
+cateory: {row["category"]}<|eot_id|>
 <|start_header_id|>user<|end_header_id|>
 
-{row['instruction']}<|eot_id|>
+{row["instruction"]}<|eot_id|>
 <|start_header_id|>assistant<|end_header_id|>
 """
     return {"text": text}
 
 
-df = (
-    pd.read_csv("./data/training_dataset.csv")
-    .sample(1000, random_state=42)
-    .apply(lambda x: format_data(x), axis=1, result_type="expand")
-    .drop(columns=["system_prompt", "instruction", "category"])
+df = pd.read_csv("./data/training_dataset.csv")
+
+dataset = Dataset.from_pandas(
+    df.sample(1000, random_state=42).apply(format_data, axis=1, result_type="expand")
 )
 
-dataset = Dataset.from_pandas(df)
-
 dataset = dataset.map(
-    lambda x: tokenizer(
-        x["text"],
-        padding=True,
-        truncation=True,
-        max_length=512,
-        return_tensors="pt",
-    ),
-    batched=False
+    lambda x: {
+        "input_ids": tokenizer(
+            x["text"],
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors="pt",
+        )
+    },
+    batched=False,
 )
 
 
