@@ -57,6 +57,8 @@ dataset = dataset.map(
         "input_ids": tokenizer.encode(
             " " + x["text"],
             return_tensors="pt",
+            padding="max_length",
+            truncation=True,
         )[0]
     },
     batched=False
