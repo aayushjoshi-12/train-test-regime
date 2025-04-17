@@ -50,7 +50,7 @@ cateory: {row["category"]}<|eot_id|>
 df = pd.read_csv("./data/training_dataset.csv")
 
 sample_df = df.sample(1000, random_state=42)
-dataset = Dataset.from_pandas(sample_df.apply(format_data, axis=1))
+dataset = Dataset.from_pandas(sample_df.apply(format_data, axis=1, result_type="expand"))
 
 def tokenize_function(examples):
     return tokenizer(
