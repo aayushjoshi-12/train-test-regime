@@ -16,7 +16,7 @@ bnb_config = BitsAndBytesConfig(
     bnb_4bit_compute_dtype="float16",
 )
 
-tokenizer = AutoTokenizer.from_pretrained("../trained_models/llama3.2-mortgage-finetuned_v4")
+tokenizer = AutoTokenizer.from_pretrained("../trained_models/llama3.1-mortgage-finetuned_v4")
 tokenizer.pad_token_id = tokenizer.eos_token_id
 reward_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/llama3.2-rm", quantization_config=bnb_config
