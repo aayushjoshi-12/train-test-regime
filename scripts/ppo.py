@@ -53,7 +53,7 @@ cateory: {row['category']}<|eot_id|>
 df = (
     pd.read_csv("./data/training_dataset.csv")
     .sample(1000, random_state=42)
-    .apply(lambda x: format_data(x), axis=1)
+    .apply(lambda x: format_data(x), axis=1, result_type="expand")
 )
 dataset = Dataset.from_pandas(df)
 
