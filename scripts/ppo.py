@@ -3,6 +3,7 @@ import torch
 from transformers import (
     AutoModelForSequenceClassification,
     BitsAndBytesConfig,
+    AutoTokenizer,
 )
 from unsloth import FastLanguageModel
 from trl import PPOTrainer, PPOConfig
@@ -60,7 +61,7 @@ dataset = dataset.map(
         padding="max_length",
         truncation=True,
         max_length=512,
-        return_tensors=None,
+        return_tensors="pt",
     ),
     batched=False
 )
