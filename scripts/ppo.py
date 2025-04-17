@@ -43,11 +43,7 @@ cateory: {row['category']}<|eot_id|>
 {row['instruction']}<|eot_id|>
 <|start_header_id|>assistant<|end_header_id|>
 """
-    tokenizer.encode_plus(text, return_tensors="pt")
-    return {
-        "input_ids": tokenizer.encode(text, return_tensors="pt")[0],
-        "attention_mask": tokenizer.encode(text, return_tensors="pt")[0],
-    }
+    return {"text": text}
 
 
 df = (
@@ -56,6 +52,17 @@ df = (
     .apply(lambda x: format_data(x), axis=1, result_type="expand")
 )
 dataset = Dataset.from_pandas(df)
+dataset = dataset.map(
+    lambda x: {
+        "input_ids": tokenizer.encode(
+            " " + x["text"],
+            return_tensors="pt",
+        )[0]
+    },
+    batched=False
+)
+dataset = Dataset.from_dict(dataset).set_format("torch")
+
 
 config = PPOConfig(
     learning_rate=1.41e-5,
