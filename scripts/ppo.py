@@ -51,18 +51,20 @@ df = (
     .sample(1000, random_state=42)
     .apply(lambda x: format_data(x), axis=1, result_type="expand")
 )
+
 dataset = Dataset.from_pandas(df)
+
 dataset = dataset.map(
-    lambda x: {
-        "input_ids": tokenizer.encode(
-            " " + x["text"],
-            return_tensors="pt",
-            padding="max_length",
-            truncation=True,
-        )[0]
-    },
+    lambda x: tokenizer(
+        x["text"],
+        padding="max_length",
+        truncation=True,
+        max_length=512,
+        return_tensors=None,
+    ),
     batched=False
 )
+
 
 config = PPOConfig(
     learning_rate=1.41e-5,
