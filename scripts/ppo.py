@@ -29,6 +29,8 @@ policy, tokenizer = FastLanguageModel.from_pretrained(
 )
 
 tokenizer.pad_token = tokenizer.eos_token
+tokenizer.truncation = True
+tokenizer.padding = True
 
 
 def format_data(row):
