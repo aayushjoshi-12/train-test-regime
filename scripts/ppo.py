@@ -19,10 +19,10 @@ bnb_config = BitsAndBytesConfig(
 tokenizer = AutoTokenizer.from_pretrained("../trained_models/llama3.1-mortgage-finetuned_v4")
 tokenizer.pad_token_id = tokenizer.eos_token_id
 reward_model = AutoModelForSequenceClassification.from_pretrained(
-    "./models/llama3.2-rm", quantization_config=bnb_config
+    "./models/reward_models/llama3.2-rm", quantization_config=bnb_config
 )
 value_model = AutoModelForSequenceClassification.from_pretrained(
-    "./models/llama3.2-rm", quantization_config=bnb_config
+    "./models/reward_models/llama3.2-rm", quantization_config=bnb_config
 )
 policy = AutoModelForCausalLM.from_pretrained(
     "./models/llama3.2-mortgage-finetuned", quantization_config=bnb_config
