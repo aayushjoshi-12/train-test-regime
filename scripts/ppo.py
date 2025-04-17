@@ -29,9 +29,6 @@ policy, tokenizer = FastLanguageModel.from_pretrained(
 )
 
 tokenizer.pad_token = tokenizer.eos_token
-tokenizer.truncation = True
-tokenizer.padding = True
-
 
 def format_data(row):
     """Format a data row into the expected evaluation format."""
@@ -53,6 +50,7 @@ df = (
     pd.read_csv("./data/training_dataset.csv")
     .sample(1000, random_state=42)
     .apply(lambda x: format_data(x), axis=1, result_type="expand")
+    .drop(columns=["system_prompt", "instruction", "category"])
 )
 
 dataset = Dataset.from_pandas(df)
