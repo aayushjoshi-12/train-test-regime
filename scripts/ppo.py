@@ -5,6 +5,7 @@ from transformers import (
     AutoTokenizer,
     GenerationConfig,
 )
+from peft import LoraConfig
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import pandas as pd
 from datasets import Dataset
@@ -27,7 +28,7 @@ reward_model = AutoModelForSequenceClassification.from_pretrained(
     quantization_config=bnb_config,
     device_map="auto",
 )
-value_model = AutoModelForSequenceClassification.from_pretrained( 
+value_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/reward_models/llama3.2-rm",
     quantization_config=bnb_config,
     device_map="auto",
@@ -41,7 +42,6 @@ policy.generation_config = GenerationConfig(top_k=0, top_p=1.0)
 tokenizer = AutoTokenizer.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
-
 tokenizer.pad_token = tokenizer.eos_token
 
 
@@ -99,7 +99,17 @@ config = PPOConfig(
     vf_coef=0.1,
 )
 
-# Set gradient checkpointing 
+peft_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.1,
+    bias="none",
+    task_type="CAUSAL_LM",
+    target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],
+    modules_to_save=["q_proj", "v_proj", "k_proj", "o_proj"],
+)
+
+# Set gradient checkpointing
 policy.pretrained_model.gradient_checkpointing_enable()
 
 # Optional memory optimization: explicitly set CUDA options
@@ -111,8 +121,10 @@ trainer = PPOTrainer(
     processing_class=tokenizer,
     model=policy,
     reward_model=reward_model,
+    value_model=value_model,
     ref_model=None,
     train_dataset=dataset,
+    peft_config=peft_config,
 )
 
 del df, sample_df
