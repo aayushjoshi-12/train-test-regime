@@ -55,7 +55,7 @@ dataset = Dataset.from_pandas(
 
 dataset = dataset.map(
     lambda x: {
-        "input_ids": tokenizer(
+        "input_ids": tokenizer.encode_plus(
             x["text"],
             padding=True,
             truncation=True,
