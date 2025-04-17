@@ -80,9 +80,10 @@ config = PPOConfig(
 )
 
 trainer = PPOTrainer(
-    config=config,
+    args=config,
     model=policy,
     reward_model=reward_model,
+    ref_model=None,
     processing_class=tokenizer,
     value_model=value_model,
     train_dataset=dataset,
