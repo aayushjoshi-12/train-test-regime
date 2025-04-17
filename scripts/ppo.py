@@ -58,7 +58,7 @@ dataset = Dataset.from_pandas(df)
 dataset = dataset.map(
     lambda x: tokenizer(
         x["text"],
-        padding="max_length",
+        padding=True,
         truncation=True,
         max_length=512,
         return_tensors="pt",
