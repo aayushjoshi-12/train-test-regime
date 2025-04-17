@@ -1,12 +1,10 @@
-import unsloth
 import torch
 from transformers import (
     AutoModelForSequenceClassification,
     BitsAndBytesConfig,
     AutoTokenizer,
 )
-from unsloth import FastLanguageModel
-from trl import PPOTrainer, PPOConfig
+from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 import pandas as pd
 from datasets import Dataset
 
@@ -24,8 +22,11 @@ reward_model = AutoModelForSequenceClassification.from_pretrained(
 value_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/reward_models/llama3.2-rm", quantization_config=bnb_config
 )
-policy, tokenizer = FastLanguageModel.from_pretrained(
-    "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
+policy = AutoModelForCausalLMWithValueHead.from_pretrained(
+    "../models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
+)
+tokenizer = AutoTokenizer.from_pretrained(
+    "../models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
 
 tokenizer.pad_token = tokenizer.eos_token
@@ -50,7 +51,10 @@ cateory: {row["category"]}<|eot_id|>
 df = pd.read_csv("./data/training_dataset.csv")
 
 sample_df = df.sample(1000, random_state=42)
-dataset = Dataset.from_pandas(sample_df.apply(format_data, axis=1, result_type="expand"))
+dataset = Dataset.from_pandas(
+    sample_df.apply(format_data, axis=1, result_type="expand")
+)
+
 
 def tokenize_function(examples):
     return tokenizer(
@@ -61,11 +65,8 @@ def tokenize_function(examples):
         return_tensors=None,
     )
 
-dataset = dataset.map(
-    tokenize_function,
-    batched=True,
-    remove_columns=["text"]
-)
+
+dataset = dataset.map(tokenize_function, batched=True, remove_columns=["text"])
 
 config = PPOConfig(
     learning_rate=1.41e-5,
