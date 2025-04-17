@@ -1,0 +1,89 @@
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
+from trl import PPOTrainer, PPOConfig
+import pandas as pd
+from datasets import Dataset
+
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype="float16",
+)
+
+tokenizer = AutoTokenizer.from_pretrained("../trained_models/llama3.2-mortgage-finetuned_v4")
+tokenizer.pad_token_id = tokenizer.eos_token_id
+reward_model = AutoModelForSequenceClassification.from_pretrained(
+    "./models/llama3.2-rm", quantization_config=bnb_config
+)
+value_model = AutoModelForSequenceClassification.from_pretrained(
+    "./models/llama3.2-rm", quantization_config=bnb_config
+)
+policy = AutoModelForCausalLM.from_pretrained(
+    "./models/llama3.2-mortgage-finetuned", quantization_config=bnb_config
+)
+
+
+def format_data(row):
+    """Format a data row into the expected evaluation format."""
+    text = f"""
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+{row["system_prompt"]}
+
+cateory: {row["category"]}<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+
+{row["instruction"]}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>
+"""
+    tokenizer.encode(text, return_tensors="pt")
+    return {
+        "input_ids": tokenizer.encode(text, return_tensors="pt")[0],
+        "attention_mask": tokenizer.encode(text, return_tensors="pt")[0],
+    }
+
+
+df = (
+    pd.read_csv("./data/training_dataset.csv")
+    .loc(["system_prompt", "instruction", "category"])
+    .sample(1000, random_state=42)
+    .map(lambda x: format_data(x))
+)
+dataset = Dataset.from_pandas(df)
+
+config = PPOConfig(
+    learning_rate=1.41e-5,
+    weight_decay=0.01,
+    mini_batch_size=1,
+    gradient_accumulation_steps=8,
+    num_ppo_epochs=2,
+    per_gpu_train_batch_size=8,
+    kl_coef=0.2,
+    num_train_epochs=2,
+    lr_scheduler_type="cosine",
+    cliprange=0.2,
+    cliprange_value=0.2,
+    gamma=1.0,
+    lam=0.95,
+    vf_coef=0.1,
+)
+
+trainer = PPOTrainer(
+    config=config,
+    model=policy,
+    reward_model=reward_model,
+    processing_class=tokenizer,
+    value_model=value_model,
+    train_dataset=dataset,
+)
+
+trainer.train()
+
+policy.save_pretrained("./models/llama3.1-ppo-w-llama3.2-rm")
+tokenizer.save_pretrained("./models/llama3.1-ppo-w-llama3.2-rm")
