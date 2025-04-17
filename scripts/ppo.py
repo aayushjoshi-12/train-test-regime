@@ -27,6 +27,11 @@ reward_model = AutoModelForSequenceClassification.from_pretrained(
     quantization_config=bnb_config,
     device_map="auto",
 )
+value_model = AutoModelForSequenceClassification.from_pretrained( 
+    "./models/reward_models/llama3.2-rm",
+    quantization_config=bnb_config,
+    device_map="auto",
+)
 policy = AutoModelForCausalLMWithValueHead.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4",
     quantization_config=bnb_config,
