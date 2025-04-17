@@ -23,10 +23,10 @@ value_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/reward_models/llama3.2-rm", quantization_config=bnb_config
 )
 policy = AutoModelForCausalLMWithValueHead.from_pretrained(
-    "../models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
+    "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
 tokenizer = AutoTokenizer.from_pretrained(
-    "../models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
+    "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
 
 tokenizer.pad_token = tokenizer.eos_token
