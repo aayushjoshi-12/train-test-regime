@@ -61,7 +61,7 @@ dataset = dataset.map(
             truncation=True,
             max_length=512,
             return_tensors="pt",
-        )
+        )["input_ids"][0],
     },
     batched=False,
 )
