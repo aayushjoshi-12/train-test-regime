@@ -1,16 +1,16 @@
-import torch
-from transformers import (
-    AutoModelForSequenceClassification,
-    BitsAndBytesConfig,
-    AutoTokenizer,
-    GenerationConfig,
-)
-from peft import LoraConfig
-from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
-import pandas as pd
-from datasets import Dataset
 import gc
 
+import pandas as pd
+import torch
+from datasets import Dataset
+from peft import LoraConfig
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    GenerationConfig,
+)
+from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer
 
 # Memory optimization: Clear any existing CUDA cache
 torch.cuda.empty_cache()
@@ -28,17 +28,20 @@ reward_model = AutoModelForSequenceClassification.from_pretrained(
     quantization_config=bnb_config,
     device_map="auto",
 )
+
 value_model = AutoModelForSequenceClassification.from_pretrained(
     "./models/reward_models/llama3.2-rm",
     quantization_config=bnb_config,
     device_map="auto",
 )
+
 policy = AutoModelForCausalLMWithValueHead.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4",
     quantization_config=bnb_config,
     device_map="auto",
 )
 policy.generation_config = GenerationConfig(top_k=0, top_p=1.0)
+
 tokenizer = AutoTokenizer.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
 )
@@ -97,6 +100,7 @@ config = PPOConfig(
     gamma=1.0,
     lam=0.95,
     vf_coef=0.1,
+    ds3_gather_for_generation=False,
 )
 
 peft_config = LoraConfig(
