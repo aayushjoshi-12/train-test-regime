@@ -157,7 +157,7 @@ for epoch in range(config.num_train_epochs):
     
     for batch_idx, batch in enumerate(train_dataloader):
         # Move batch to GPU
-        batch = {k: v.to("cuda:0") for k, v in batch.items()}
+        batch = {k: torch.tensor(v).to("cuda:0") for k, v in batch.items()}
         
         # Generate responses
         input_ids = batch["input_ids"]
