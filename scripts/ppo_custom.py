@@ -42,7 +42,7 @@ policy = AutoModelForCausalLMWithValueHead.from_pretrained(
     quantization_config=bnb_config,
     device_map="auto",
 )
-policy.generation_config = GenerationConfig(top_k=0, top_p=1.0)
+policy.generation_config = GenerationConfig(do_sample=True)
 
 tokenizer = AutoTokenizer.from_pretrained(
     "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
@@ -124,7 +124,7 @@ trainer = PPOTrainer(
     value_model=value_model,
     ref_model=None,
     train_dataset=dataset,
-    peft_config=peft_config,
+    # peft_config=peft_config,
 )
 
 del df, sample_df
@@ -157,7 +157,7 @@ for epoch in range(config.num_train_epochs):
     
     for batch_idx, batch in enumerate(train_dataloader):
         # Move batch to GPU
-        batch = {k: v.to(policy.device_map) for k, v in batch.items()}
+        batch = {k: v.to("cuda:0") for k, v in batch.items()}
         
         # Generate responses
         input_ids = batch["input_ids"]
@@ -175,14 +175,14 @@ for epoch in range(config.num_train_epochs):
             generated_ids = outputs.sequences
             
             # Get rewards from reward model
-            reward_model.to(policy.device_map)
+            reward_model.to("cuda:0")
             reward_outputs = reward_model(generated_ids, attention_mask=torch.ones_like(generated_ids))
             rewards = reward_outputs.logits.squeeze(-1)
             reward_model.to("cpu")  # Offload reward model to CPU
             torch.cuda.empty_cache()
             
             # Get value estimates
-            value_model.to(policy.device_map)
+            value_model.to("cuda:0")
             value_outputs = value_model(input_ids, attention_mask=attention_mask)
             values = value_outputs.logits.squeeze(-1)
             value_model.to("cpu")  # Offload value model to CPU
