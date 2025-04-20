@@ -157,7 +157,7 @@ for epoch in range(config.num_train_epochs):
     
     for batch_idx, batch in enumerate(train_dataloader):
         # Move batch to GPU
-        batch = {k: v.to(policy.device) for k, v in batch.items()}
+        batch = {k: v.to(policy.device_map) for k, v in batch.items()}
         
         # Generate responses
         input_ids = batch["input_ids"]
@@ -175,14 +175,14 @@ for epoch in range(config.num_train_epochs):
             generated_ids = outputs.sequences
             
             # Get rewards from reward model
-            reward_model.to(policy.device)
+            reward_model.to(policy.device_map)
             reward_outputs = reward_model(generated_ids, attention_mask=torch.ones_like(generated_ids))
             rewards = reward_outputs.logits.squeeze(-1)
             reward_model.to("cpu")  # Offload reward model to CPU
             torch.cuda.empty_cache()
             
             # Get value estimates
-            value_model.to(policy.device)
+            value_model.to(policy.device_map)
             value_outputs = value_model(input_ids, attention_mask=attention_mask)
             values = value_outputs.logits.squeeze(-1)
             value_model.to("cpu")  # Offload value model to CPU
