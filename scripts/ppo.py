@@ -9,8 +9,8 @@ import torch
 import yaml
 from datasets import Dataset
 from transformers import GenerationConfig
-from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from trl import PPOTrainer, PPOConfig
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM
 from torch.cuda import memory_summary
 
 
@@ -82,7 +82,7 @@ def initialize_models(cfg):
     )
 
     print(memory_summary(device=None, abbreviated=False))
-    policy = AutoModelForCausalLMWithValueHead.from_pretrained(
+    policy = AutoModelForCausalLM.from_pretrained(
         cfg["policy_model_path"],
         device_map="auto",
         torch_dtype=torch.bfloat16,
@@ -93,7 +93,7 @@ def initialize_models(cfg):
     policy.pretrained_model.config.use_cache = False
 
     print(memory_summary(device=None, abbreviated=False))
-    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(
+    ref_model = AutoModelForCausalLM.from_pretrained(
         cfg["policy_model_path"],
         device_map="cpu",
         torch_dtype=torch.bfloat16,
