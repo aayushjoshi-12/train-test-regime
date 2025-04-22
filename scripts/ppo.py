@@ -10,22 +10,9 @@ import torch.nn as nn
 import yaml
 from datasets import Dataset
 from transformers import GenerationConfig
-from trl import PPOTrainer, PPOConfig
+from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-
-class ValueHeadModel(nn.Module):
-    def __init__(self, base_model_name):
-        super().__init__()
-        self.model = AutoModelForCausalLM.from_pretrained(base_model_name)
-        hidden_size = self.model.config.hidden_size
-        self.score = nn.Linear(hidden_size, 1)  # 1 scalar per token
-
-    def forward(self, *args, **kwargs):
-        output = self.model(*args, output_hidden_states=True, **kwargs)
-        last_hidden_state = output.hidden_states[-1]
-        values = self.score(last_hidden_state).squeeze(-1)  # shape: (batch, seq)
-        return output, values
 
 def setup_logging(experiment_name, log_dir="./experiments/logs"):
     Path(log_dir).mkdir(parents=True, exist_ok=True)
@@ -85,7 +72,12 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
 
-    value_model = ValueHeadModel(cfg["policy_model_path"]).to(dtype=torch.bfloat16).to("cpu")
+    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(
+        cfg["value_model_path"],
+        device_map="cpu",
+        torch_dtype=torch.bfloat16,
+        low_cpu_mem_usage=True,
+    )
 
     policy = AutoModelForCausalLM.from_pretrained(
         cfg["policy_model_path"],
