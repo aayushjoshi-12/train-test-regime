@@ -58,7 +58,6 @@ def tokenize_dataset(dataset, tokenizer):
             examples["text"],
             padding="max_length",
             truncation=True,
-            max_length=256,
             return_tensors=None,
         )
     return dataset.map(tokenize_function, batched=True, remove_columns=["text"])
