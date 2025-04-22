@@ -11,8 +11,8 @@ bnb:
   load_in_4bit: true
 
 training:
-  batch_size: 8
-  num_epochs: 2
+  batch_size: 1
+  num_epochs: 4
   gradient_accumulation_steps: 8
   optim: "paged_adamw_32bit"
   warmup_ratio: 0.03
