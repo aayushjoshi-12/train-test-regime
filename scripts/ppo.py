@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-import torch.nn as nn
 import yaml
 from datasets import Dataset
 from transformers import GenerationConfig
@@ -58,7 +57,7 @@ def tokenize_dataset(dataset, tokenizer):
             examples["text"],
             padding="max_length",
             truncation=True,
-            max_length=128,
+            max_length=256,
             return_tensors=None,
         )
     return dataset.map(tokenize_function, batched=True, remove_columns=["text"])
@@ -72,14 +71,7 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
 
-    value_model = AutoModelForCausalLMWithValueHead.from_pretrained(
-        cfg["reward_model_path"],
-        device_map="cpu",
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=True,
-    )
-
-    policy = AutoModelForCausalLM.from_pretrained(
+    policy = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
         device_map="auto",
         torch_dtype=torch.bfloat16,
@@ -98,7 +90,7 @@ def initialize_models(cfg):
     tokenizer = AutoTokenizer.from_pretrained(cfg["policy_model_path"])
     tokenizer.pad_token = tokenizer.eos_token
 
-    return policy, tokenizer, reward_model, value_model, ref_model
+    return policy, tokenizer, reward_model, ref_model
 
 
 def train_model(config_path):
@@ -106,7 +98,7 @@ def train_model(config_path):
     logger = setup_logging(cfg["experiment_name"])
     logger.info("Loading models and tokenizer")
 
-    policy, tokenizer, reward_model, value_model, ref_model = initialize_models(cfg)
+    policy, tokenizer, reward_model, ref_model = initialize_models(cfg)
 
     logger.info("Preparing dataset")
     raw_dataset = prepare_dataset(cfg)
@@ -137,7 +129,7 @@ def train_model(config_path):
         processing_class=tokenizer,
         model=policy,
         reward_model=reward_model,
-        value_model=value_model,
+        value_model=policy,
         ref_model=ref_model,
         train_dataset=dataset,
     )
