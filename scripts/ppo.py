@@ -10,7 +10,7 @@ import yaml
 from datasets import Dataset
 from transformers import GenerationConfig
 from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
 def setup_logging(experiment_name, log_dir="./experiments/logs"):
@@ -64,7 +64,7 @@ def tokenize_dataset(dataset, tokenizer):
 
 
 def initialize_models(cfg):
-    reward_model = AutoModelForCausalLM.from_pretrained(
+    reward_model = AutoModelForSequenceClassification.from_pretrained(
         cfg["reward_model_path"],
         device_map="cpu",
         torch_dtype=torch.bfloat16,
@@ -78,8 +78,10 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
     policy.generation_config = GenerationConfig()
+    policy.pretrained_model.gradient_checkpointing_enable()
+    policy.pretrained_model.config.use_cache = False
 
-    ref_model = AutoModelForCausalLM.from_pretrained(
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
         device_map="cpu",
         torch_dtype=torch.bfloat16,
@@ -122,6 +124,8 @@ def train_model(config_path):
         lam=0.95,
         vf_coef=0.1,
     )
+
+    policy.pretrained_model.gradient_checkpointing_enable()
 
     logger.info("Training with PPOTrainer...")
     trainer = PPOTrainer(
