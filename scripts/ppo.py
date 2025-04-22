@@ -36,14 +36,14 @@ value_model = AutoModelForSequenceClassification.from_pretrained(
 )
 
 policy = AutoModelForCausalLMWithValueHead.from_pretrained(
-    "../trained_models/llama3.1-mortgage-finetuned_v4",
+    "./models/llama3.2-1b-qlora-mortgage",
     quantization_config=bnb_config,
     device_map="auto",
 )
-policy.generation_config = GenerationConfig(top_k=0, top_p=1.0)
+policy.generation_config = GenerationConfig()
 
 tokenizer = AutoTokenizer.from_pretrained(
-    "../trained_models/llama3.1-mortgage-finetuned_v4", quantization_config=bnb_config
+    "./models/llama3.2-1b-qlora-mortgage", quantization_config=bnb_config
 )
 tokenizer.pad_token = tokenizer.eos_token
 
@@ -66,7 +66,7 @@ cateory: {row["category"]}<|eot_id|>
 
 df = pd.read_csv("./data/training_dataset.csv")
 
-sample_df = df.sample(500, random_state=42)
+sample_df = df.sample(1000, random_state=42)
 dataset = Dataset.from_pandas(
     sample_df.apply(format_data, axis=1, result_type="expand")
 )
@@ -131,5 +131,5 @@ torch.cuda.empty_cache()
 
 
 trainer.train()
-policy.save_pretrained("./models/llama3.1-ppo-w-llama3.2-rm")
-tokenizer.save_pretrained("./models/llama3.1-ppo-w-llama3.2-rm")
+policy.save_pretrained("./models/llama3.2-ppo-w-llama3.2-rm")
+tokenizer.save_pretrained("./models/llama3.2-ppo-w-llama3.2-rm")
