@@ -73,7 +73,7 @@ def initialize_models(cfg):
     )
 
     value_model = AutoModelForCausalLMWithValueHead.from_pretrained(
-        cfg["value_model_path"],
+        cfg["reward_model_path"],
         device_map="cpu",
         torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
