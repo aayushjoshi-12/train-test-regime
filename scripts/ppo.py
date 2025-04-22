@@ -65,36 +65,28 @@ def tokenize_dataset(dataset, tokenizer):
 
 
 def initialize_models(cfg):
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=cfg["bnb"]["load_in_4bit"],
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-    )
 
     reward_model = AutoModelForSequenceClassification.from_pretrained(
         cfg["reward_model_path"],
-        quantization_config=bnb_config,
-        device_map="auto",
-    )
-
-    value_model = AutoModelForSequenceClassification.from_pretrained(
-        cfg["reward_model_path"],
-        quantization_config=bnb_config,
         device_map="auto",
     )
 
     policy = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
-        quantization_config=bnb_config,
         device_map="auto",
     )
     policy.generation_config = GenerationConfig()
 
+    ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(
+        cfg["policy_model_path"],
+        device_map="auto",
+    )
+    ref_model.generation_config = GenerationConfig()
+
     tokenizer = AutoTokenizer.from_pretrained(cfg["policy_model_path"])
     tokenizer.pad_token = tokenizer.eos_token
 
-    return policy, tokenizer, reward_model, value_model
+    return policy, tokenizer, reward_model, ref_model
 
 
 def train_model(config_path):
@@ -102,7 +94,7 @@ def train_model(config_path):
     logger = setup_logging(cfg["experiment_name"])
     logger.info("Loading models and tokenizer")
 
-    policy, tokenizer, reward_model, value_model = initialize_models(cfg)
+    policy, tokenizer, reward_model, ref_model = initialize_models(cfg)
 
     logger.info("Preparing dataset")
     raw_dataset = prepare_dataset(cfg)
@@ -127,15 +119,6 @@ def train_model(config_path):
         vf_coef=0.1,
     )
 
-    peft_config = LoraConfig(
-        r=cfg["lora"]["r"],
-        lora_alpha=cfg["lora"]["alpha"],
-        lora_dropout=0.1,
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=cfg["lora"]["target_modules"],
-    )
-
     policy.pretrained_model.gradient_checkpointing_enable()
 
     logger.info("Training with PPOTrainer...")
@@ -144,10 +127,8 @@ def train_model(config_path):
         processing_class=tokenizer,
         model=policy,
         reward_model=reward_model,
-        value_model=value_model,
-        ref_model=None,
+        ref_model=ref_model,
         train_dataset=dataset,
-        peft_config=peft_config,
     )
 
     gc.collect()
