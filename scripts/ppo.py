@@ -11,7 +11,7 @@ from datasets import Dataset
 from transformers import GenerationConfig
 from trl import PPOTrainer, PPOConfig
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM
-from torch.cuda import memory_summary
+# from torch.cuda import memory_summary
 
 
 def setup_logging(experiment_name, log_dir="./experiments/logs"):
@@ -58,6 +58,7 @@ def tokenize_dataset(dataset, tokenizer):
             examples["text"],
             padding="max_length",
             truncation=True,
+            max_length=512,
             return_tensors=None,
         )
     return dataset.map(tokenize_function, batched=True, remove_columns=["text"])
