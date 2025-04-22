@@ -71,6 +71,11 @@ def initialize_models(cfg):
         device_map="auto",
     )
 
+    value_model = AutoModelForSequenceClassification.from_pretrained(
+        cfg["reward_model_path"],
+        device_map="auto",
+    )
+
     policy = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
         device_map="auto",
@@ -86,7 +91,7 @@ def initialize_models(cfg):
     tokenizer = AutoTokenizer.from_pretrained(cfg["policy_model_path"])
     tokenizer.pad_token = tokenizer.eos_token
 
-    return policy, tokenizer, reward_model, ref_model
+    return policy, tokenizer, reward_model, value_model, ref_model
 
 
 def train_model(config_path):
@@ -94,7 +99,7 @@ def train_model(config_path):
     logger = setup_logging(cfg["experiment_name"])
     logger.info("Loading models and tokenizer")
 
-    policy, tokenizer, reward_model, ref_model = initialize_models(cfg)
+    policy, tokenizer, reward_model, value_model, ref_model = initialize_models(cfg)
 
     logger.info("Preparing dataset")
     raw_dataset = prepare_dataset(cfg)
@@ -127,6 +132,7 @@ def train_model(config_path):
         processing_class=tokenizer,
         model=policy,
         reward_model=reward_model,
+        value_model=value_model,
         ref_model=ref_model,
         train_dataset=dataset,
     )
