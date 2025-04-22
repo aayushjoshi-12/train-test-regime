@@ -3,7 +3,7 @@ model_name: "Qwen/Qwen2.5-3B-Instruct"
 output_dir: "./models/qwen2.5-qlora-ppo-w-llama3.2-rm"
 data_dir: "./data"
 
-policy_model_path: "./models/llama3.2-1b-qlora-mortgage"
+policy_model_path: "./models/qwen2.5-3b-qlora-mortgage"
 reward_model_path: "./models/reward_models/llama3.2-rm"
 
 train_size: 1000
