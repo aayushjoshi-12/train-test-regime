@@ -85,7 +85,7 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
 
-    value_model = ValueHeadModel(cfg["policy_model_path"]).to(dtype=torch.bfloat16, device_map="cpu")
+    value_model = ValueHeadModel(cfg["policy_model_path"]).to(dtype=torch.bfloat16).to("cpu")
 
     policy = AutoModelForCausalLM.from_pretrained(
         cfg["policy_model_path"],
