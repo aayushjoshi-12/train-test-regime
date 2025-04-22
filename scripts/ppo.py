@@ -89,8 +89,8 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
     policy.generation_config = GenerationConfig()
-    policy.pretrained_model.gradient_checkpointing_enable()
-    policy.pretrained_model.config.use_cache = False
+    # policy.pretrained_model.gradient_checkpointing_enable()
+    # policy.pretrained_model.config.use_cache = False
 
     print(memory_summary(device=None, abbreviated=False))
     ref_model = AutoModelForCausalLM.from_pretrained(
