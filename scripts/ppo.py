@@ -10,8 +10,7 @@ import yaml
 from datasets import Dataset
 from transformers import GenerationConfig
 from trl import PPOTrainer, PPOConfig
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM
-# from torch.cuda import memory_summary
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 def setup_logging(experiment_name, log_dir="./experiments/logs"):
@@ -65,23 +64,20 @@ def tokenize_dataset(dataset, tokenizer):
 
 
 def initialize_models(cfg):
-    # print(memory_summary(device=None, abbreviated=False))
-    reward_model = AutoModelForSequenceClassification.from_pretrained(
+    reward_model = AutoModelForCausalLM.from_pretrained(
         cfg["reward_model_path"],
         device_map="cpu",
         torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
     )
 
-    # print(memory_summary(device=None, abbreviated=False))
-    value_model = AutoModelForSequenceClassification.from_pretrained(
+    value_model = AutoModelForCausalLM.from_pretrained(
         cfg["reward_model_path"],
         device_map="cpu",
         torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
     )
 
-    # print(memory_summary(device=None, abbreviated=False))
     policy = AutoModelForCausalLM.from_pretrained(
         cfg["policy_model_path"],
         device_map="auto",
@@ -89,10 +85,7 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
     policy.generation_config = GenerationConfig()
-    # policy.pretrained_model.gradient_checkpointing_enable()
-    # policy.pretrained_model.config.use_cache = False
 
-    # print(memory_summary(device=None, abbreviated=False))
     ref_model = AutoModelForCausalLM.from_pretrained(
         cfg["policy_model_path"],
         device_map="cpu",
@@ -100,7 +93,6 @@ def initialize_models(cfg):
         low_cpu_mem_usage=True,
     )
     ref_model.generation_config = GenerationConfig()
-    # print(memory_summary(device=None, abbreviated=False))
 
     tokenizer = AutoTokenizer.from_pretrained(cfg["policy_model_path"])
     tokenizer.pad_token = tokenizer.eos_token
@@ -152,7 +144,6 @@ def train_model(config_path):
     gc.collect()
     torch.cuda.empty_cache()
 
-    # print(memory_summary(device=None, abbreviated=False))
     trainer.train()
     logger.info("Training complete. Saving model...")
 
