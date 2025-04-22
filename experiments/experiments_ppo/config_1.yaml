@@ -3,7 +3,7 @@ model_name: "meta-llama/Meta-Llama-3-8B"
 output_dir: "./models/llama3.2-qlora-ppo-w-llama3.2-rm"
 data_dir: "./data"
 
-policy_model_path: ./models/llama3.2-1b-qlora-mortgage"
+policy_model_path: "./models/llama3.2-1b-qlora-mortgage"
 reward_model_path: "./models/reward_models/llama3.2-rm"
 
 train_size: 1000
