@@ -138,8 +138,6 @@ def train_model(config_path):
         vf_coef=0.1,
     )
 
-    policy.pretrained_model.gradient_checkpointing_enable()
-
     logger.info("Training with PPOTrainer...")
     trainer = PPOTrainer(
         args=ppo_config,
