@@ -65,26 +65,35 @@ def tokenize_dataset(dataset, tokenizer):
 
 
 def initialize_models(cfg):
-
     reward_model = AutoModelForSequenceClassification.from_pretrained(
         cfg["reward_model_path"],
-        device_map="auto",
+        device_map="cpu",
+        torch_dtype=torch.bfloat16,
+        low_cpu_mem_usage=True,
     )
 
     value_model = AutoModelForSequenceClassification.from_pretrained(
         cfg["reward_model_path"],
-        device_map="auto",
+        device_map="cpu",
+        torch_dtype=torch.bfloat16,
+        low_cpu_mem_usage=True,
     )
 
     policy = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
         device_map="auto",
+        torch_dtype=torch.bfloat16,
+        low_cpu_mem_usage=True,
     )
     policy.generation_config = GenerationConfig()
+    policy.pretrained_model.gradient_checkpointing_enable()
+    policy.pretrained_model.config.use_cache = False
 
     ref_model = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
-        device_map="auto",
+        device_map="cpu",
+        torch_dtype=torch.bfloat16,
+        low_cpu_mem_usage=True,
     )
     ref_model.generation_config = GenerationConfig()
 
