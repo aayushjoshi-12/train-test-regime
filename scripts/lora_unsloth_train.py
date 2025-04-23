@@ -109,7 +109,7 @@ def create_training_args(cfg):
         bf16=torch.cuda.is_bf16_supported(),
         max_grad_norm=cfg["training"]["max_grad_norm"],
         lr_scheduler_type=cfg["training"]["lr_scheduler_type"],
-        # evaluation_strategy=cfg["training"]["evaluation_strategy"],
+        evaluation_strategy=cfg["training"]["evaluation_strategy"],
         eval_steps=cfg["training"]["eval_steps"],
         save_strategy=cfg["training"]["save_strategy"],
         save_steps=cfg["training"]["save_steps"],
