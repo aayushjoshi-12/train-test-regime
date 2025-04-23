@@ -1,3 +1,4 @@
+import unsloth  # Import unsloth first to apply all optimizations
 import argparse
 import logging
 import os
@@ -17,7 +18,6 @@ from trl import PPOConfig, PPOTrainer, AutoModelForCausalLMWithValueHead
 from trl import create_reference_model
 from trl.core import LengthSampler
 from peft import PeftModel
-from unsloth import FastLanguageModel
 
 
 def setup_logging(experiment_name, log_dir="./experiments/logs"):

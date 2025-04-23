@@ -1,12 +1,12 @@
 experiment_name: "qwen2.5-qlora-ppo-w-llama3.2-rm"
 model_name: "Qwen/Qwen2.5-3B-Instruct"
-output_dir: "./models/qwen2.5-qlora-ppo-w-llama3.2-rm"
-data_dir: "./data"
-
 policy_model_path: "./models/qwen2.5-3b-qlora-mortgage"
 reward_model_path: "./models/reward_models/llama3.2-rm"
+output_dir: "./models/qwen2.5-qlora-ppo-w-llama3.2-rm"
 
+data_dir: "./data"
 train_size: 1000
+test_size: 100
 
 training:
   num_epochs: 2
@@ -14,3 +14,8 @@ training:
   learning_rate: 1.41e-5
   weight_decay: 0.01
   lr_scheduler_type: "cosine"
+  
+test:
+  temperature: 0.1
+  top_p: 0.9
+  max_new_tokens: 256
