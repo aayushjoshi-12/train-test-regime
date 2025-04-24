@@ -144,7 +144,7 @@ def train_model(config_path):
     
     logger.info("Initializing PPO trainer")
     ppo_trainer = PPOTrainer(
-        config=ppo_config,
+        args=ppo_config,
         model=policy_model,
         ref_model=ref_model,
         tokenizer=tokenizer,
