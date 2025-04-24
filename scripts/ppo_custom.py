@@ -140,8 +140,6 @@ def train_model(config_path):
         gradient_accumulation_steps=cfg["training"]["gradient_accumulation_steps"],
         num_train_epochs=cfg["training"]["num_epochs"],
         lr_scheduler_type=cfg["training"]["lr_scheduler_type"],
-        target_kl=cfg["training"].get("target_kl", 0.1),
-        kl_penalty="kl",
     )
     
     logger.info("Initializing PPO trainer")
