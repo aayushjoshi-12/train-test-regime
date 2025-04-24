@@ -1,27 +1,38 @@
-import unsloth  # Import unsloth first to apply all optimizations
 import argparse
+import gc
 import logging
 import os
+import random
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import torch
 import yaml
-import pandas as pd
+from accelerate import FullyShardedDataParallelPlugin
 from datasets import Dataset
+from peft import LoraConfig, TaskType
+from torch.distributed.fsdp.fully_sharded_data_parallel import (
+    FullOptimStateDictConfig,
+    FullStateDictConfig,
+)
+from tqdm import tqdm
 from transformers import (
+    AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+    GenerationConfig,
     pipeline,
-    AutoModelForCausalLM
 )
-from trl import PPOConfig, PPOTrainer, AutoModelForCausalLMWithValueHead
-from trl import create_reference_model
-from trl.core import LengthSampler
-from peft import PeftModel
+from trl import (
+    AutoModelForCausalLMWithValueHead,
+    PPOConfig,
+    PPOTrainer,
+    create_reference_model,
+)
 
 
 def setup_logging(experiment_name, log_dir="./experiments/logs"):
-    """Configure logging for the PPO training process."""
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         filename=os.path.join(log_dir, f"{experiment_name}.log"),
@@ -32,261 +43,217 @@ def setup_logging(experiment_name, log_dir="./experiments/logs"):
 
 
 def load_config(config_path):
-    """Load configuration from YAML file."""
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
 
+def set_seed(seed_val=42):
+    """Set all seeds for reproducibility"""
+    random.seed(seed_val)
+    np.random.seed(seed_val)
+    torch.manual_seed(seed_val)
+    torch.cuda.manual_seed_all(seed_val)
+    os.environ["PYTHONHASHSEED"] = str(seed_val)
+    torch.backends.cudnn.deterministic = True
+
+
 def prepare_dataset(cfg):
-    """Load and prepare dataset for PPO training."""
-    train_df = pd.read_csv(os.path.join(cfg["data_dir"], "training_dataset.csv"))
+    df = pd.read_csv(os.path.join(cfg["data_dir"], "training_dataset.csv"))
+    sample_df = df.sample(cfg["train_size"], random_state=42)
     
-    # Sample dataset if specified in config
-    if cfg.get("train_size"):
-        train_df = train_df.sample(cfg["train_size"], random_state=42)
-        
-    # Create a dataset with just the prompts (instructions)
-    dataset = Dataset.from_pandas(train_df[["instruction", "system_prompt", "category"]])
+    def format_data(row):
+        return {
+            "query": f"""
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+{row["system_prompt"]}<|eot_id|>
+
+cateory: {row["category"]}<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+
+{row["instruction"]}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>
+"""
+        }
     
+    dataset = Dataset.from_pandas(sample_df.apply(format_data, axis=1, result_type="expand"))
     return dataset
 
 
-def format_prompt(example, cfg):
-    """Format the instruction into the expected prompt format for the model."""
-    system_prompt = example["system_prompt"] if "system_prompt" in example else cfg["default_system_prompt"]
-    category = example["category"] if "category" in example else ""
-    
-    # Format according to Llama-3 chat template but adapted for PPO
-    formatted_prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-{system_prompt}
-
-category: {category}<|eot_id|>
-<|start_header_id|>user<|end_header_id|>
-
-{example["instruction"]}<|eot_id|>
-<|start_header_id|>assistant<|end_header_id|>
-
-"""
-    return formatted_prompt
-
-
-def initialize_sft_model(cfg):
-    """Initialize and configure the SFT model."""
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=cfg["bnb"]["load_in_4bit"],
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16
-    )
-
-    # Initialize the model from the fine-tuned SFT checkpoint
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=cfg["sft_model_path"],
-        max_seq_length=cfg["max_seq_length"],
-        dtype=None,  # auto-detect
-        quantization_config=bnb_config,
-        device_map="auto"
+def initialize_models(cfg):
+    # Configuration for quantization if specified in config
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        llm_int8_threshold=6.0,
+        llm_int8_has_fp16_weight=False,
     )
     
-    # Add value head for PPO
-    model = AutoModelForCausalLMWithValueHead.from_pretrained(
-        model,
-        device_map="auto"
-    )
+    # Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(cfg["policy_model_path"])
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     
-    # Create a reference model for KL penalty
-    ref_model = create_reference_model(model)
-    
-    return model, ref_model, tokenizer
-
-
-def initialize_reward_model(cfg):
-    """Initialize the reward model from the fine-tuned checkpoint."""
-    # Load the fine-tuned reward model
+    # Load reward model
     reward_model = AutoModelForCausalLM.from_pretrained(
         cfg["reward_model_path"],
+        quantization_config=quantization_config,
         device_map="auto",
-        torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
+        torch_dtype=torch.float16,
     )
     
-    reward_tokenizer = AutoTokenizer.from_pretrained(cfg["reward_model_path"])
-    
-    if reward_tokenizer.pad_token_id is None:
-        reward_tokenizer.pad_token_id = reward_tokenizer.eos_token_id
-    
-    # Create a reward pipeline
-    reward_pipe = pipeline(
-        "text-classification",
-        model=reward_model,
-        tokenizer=reward_tokenizer,
+    # Load policy model
+    policy_model = AutoModelForCausalLMWithValueHead.from_pretrained(
+        cfg["policy_model_path"],
+        quantization_config=quantization_config,
         device_map="auto",
+        torch_dtype=torch.float16,
     )
+    policy_model.generation_config = GenerationConfig()
     
-    return reward_pipe
-
-
-def create_ppo_config(cfg):
-    """Create PPO training configuration."""
-    return PPOConfig(
-        learning_rate=float(cfg["ppo"]["learning_rate"]),
-        batch_size=cfg["ppo"]["batch_size"],
-        mini_batch_size=cfg["ppo"]["mini_batch_size"],
-        gradient_accumulation_steps=cfg["ppo"]["gradient_accumulation_steps"],
-        optimize_cuda_cache=True,
-        early_stopping=cfg["ppo"].get("early_stopping", True),
-        target_kl=cfg["ppo"].get("target_kl", 0.1),
-        ppo_epochs=cfg["ppo"].get("ppo_epochs", 4),
-        seed=cfg["seed"],
-        init_kl_coef=cfg["ppo"].get("init_kl_coef", 0.2),
-        adap_kl_ctrl=cfg["ppo"].get("adap_kl_ctrl", True),
-        use_score_scaling=cfg["ppo"].get("use_score_scaling", True),
-        use_score_norm=cfg["ppo"].get("use_score_norm", True),
-        cliprange=cfg["ppo"].get("cliprange", 0.2),
-        cliprange_value=cfg["ppo"].get("cliprange_value", 0.2),
-        vf_coef=cfg["ppo"].get("vf_coef", 0.1),
-        horizon=cfg["ppo"].get("horizon", 10000),
-        output_dir=cfg["output_dir"],
-    )
-
-
-def reward_fn(samples, reward_pipe, tokenizer):
-    """Compute rewards for generated responses using the reward model."""
-    rewards = []
+    # Create reference model
+    ref_model = create_reference_model(policy_model)
     
-    for sample in samples:
-        # Get the score from the reward model
-        result = reward_pipe(sample)
-        if isinstance(result, list):
-            # If result is a list (pipeline returns a list for each input)
-            score = result[0]["score"]
-        else:
-            # Otherwise try to get the score directly
-            score = result["score"]
-        
-        rewards.append(float(score))
-    
+    return policy_model, ref_model, reward_model, tokenizer
+
+
+def reward_fn(query, response, tokenizer, reward_model):
+    # Concatenate query and response
+    texts = [q + r for q, r in zip(query, response)]
+
+    # Tokenize the input
+    inputs = tokenizer(
+        texts, return_tensors="pt", padding=True, truncation=True
+    ).to(reward_model.device)
+
+    # Get logits from the reward model
+    with torch.no_grad():
+        outputs = reward_model(**inputs)
+        logits = outputs.logits
+
+    # Calculate rewards
+    rewards = logits.mean(dim=1)
     return rewards
 
 
 def train_model(config_path):
-    """Main PPO training function."""
     cfg = load_config(config_path)
     logger = setup_logging(cfg["experiment_name"])
+    set_seed(cfg.get("seed", 42))
     
-    # Set random seed for reproducibility
-    torch.manual_seed(cfg["seed"])
+    logger.info("Loading models and tokenizer")
+    policy_model, ref_model, reward_model, tokenizer = initialize_models(cfg)
     
-    # Initialize models
-    logger.info("Initializing SFT model and reward model")
-    model, ref_model, tokenizer = initialize_sft_model(cfg)
-    reward_pipe = initialize_reward_model(cfg)
-    
-    # Prepare dataset
     logger.info("Preparing dataset")
     dataset = prepare_dataset(cfg)
     
-    # Create PPO config
-    ppo_config = create_ppo_config(cfg)
+    # PPO configuration from the config file
+    ppo_config = PPOConfig(
+        learning_rate=cfg["training"]["learning_rate"],
+        batch_size=cfg["training"].get("batch_size", 4),
+        mini_batch_size=cfg["training"].get("mini_batch_size", 1),
+        gradient_accumulation_steps=cfg["training"]["gradient_accumulation_steps"],
+        optimize_cuda_cache=True,
+        num_train_epochs=cfg["training"]["num_epochs"],
+        lr_scheduler_type=cfg["training"]["lr_scheduler_type"],
+        early_stopping=cfg["training"].get("early_stopping", True),
+        target_kl=cfg["training"].get("target_kl", 0.1),
+        kl_penalty="kl",
+        seed=cfg.get("seed", 42),
+        use_score_scaling=True,
+        use_score_norm=True,
+    )
     
-    # Initialize PPO trainer
-    logger.info("Setting up PPO trainer")
+    logger.info("Initializing PPO trainer")
     ppo_trainer = PPOTrainer(
         config=ppo_config,
-        model=model,
+        model=policy_model,
         ref_model=ref_model,
         tokenizer=tokenizer,
         dataset=dataset,
-        data_collator=None,
+        data_collator=lambda data: {k: [d[k] for d in data] for k in data[0]},
     )
     
-    # Set up response length sampler
-    response_length_sampler = LengthSampler(
-        cfg["generation"]["min_length"],
-        cfg["generation"]["max_length"]
-    )
-    
-    # Training loop
     logger.info("Starting PPO training...")
     
-    for epoch in range(cfg["ppo"]["num_epochs"]):
-        logger.info(f"Starting epoch {epoch+1}/{cfg['ppo']['num_epochs']}")
-        
-        for batch_idx, batch in enumerate(ppo_trainer.dataloader):
-            # Format prompts
-            query_tensors = []
-            for example in batch:
-                prompt = format_prompt(example, cfg)
-                query_tensor = tokenizer(
-                    prompt, 
-                    return_tensors="pt", 
-                    padding=True, 
-                    truncation=True,
-                    max_length=cfg["max_prompt_length"]
-                ).input_ids.to(model.device)
-                query_tensors.append(query_tensor)
-            
+    # Training loop
+    for epoch in range(cfg["training"]["num_epochs"]):
+        logger.info(f"Starting epoch {epoch+1}/{cfg['training']['num_epochs']}")
+        for batch in tqdm(ppo_trainer.dataloader, desc=f"Epoch {epoch+1}"):
+            # Get query from batch
+            query_tensors = [
+                tokenizer(q, return_tensors="pt").input_ids.squeeze()
+                for q in batch["query"]
+            ]
+
             # Generate responses
-            generation_kwargs = {
-                "max_new_tokens": response_length_sampler(),
-                "do_sample": True,
-                "temperature": cfg["generation"]["temperature"],
-                "top_p": cfg["generation"]["top_p"],
-                "top_k": cfg["generation"]["top_k"],
-                "pad_token_id": tokenizer.pad_token_id,
-                "eos_token_id": tokenizer.eos_token_id,
-            }
-            
-            # Generate responses from the policy model
             response_tensors = []
-            for query_tensor in query_tensors:
+            for query in query_tensors:
                 response = ppo_trainer.generate(
-                    query_tensor, 
-                    **generation_kwargs
+                    query.unsqueeze(0),
+                    max_new_tokens=64,
+                    do_sample=True,
+                    top_k=0,
+                    top_p=0.9,
                 )
                 response_tensors.append(response.squeeze())
-            
+
             # Decode responses
-            batch_responses = []
-            for response_tensor in response_tensors:
-                decoded_response = tokenizer.decode(
-                    response_tensor, 
-                    skip_special_tokens=True
-                )
-                batch_responses.append(decoded_response)
-            
+            batch_responses = [
+                tokenizer.decode(r, skip_special_tokens=True) for r in response_tensors
+            ]
+            batch_queries = [
+                tokenizer.decode(q, skip_special_tokens=True) for q in query_tensors
+            ]
+
             # Compute rewards
-            rewards = reward_fn(batch_responses, reward_pipe, tokenizer)
-            
-            # Run PPO step
-            stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
-            ppo_trainer.log_stats(stats, batch, rewards)
-            
-            logger.info(f"Epoch {epoch+1}, Batch {batch_idx+1}: Mean reward: {torch.mean(torch.tensor(rewards)):.4f}")
-            
-            # Save checkpoint periodically
-            if (batch_idx + 1) % cfg["save_steps"] == 0:
-                checkpoint_path = os.path.join(
-                    cfg["output_dir"], 
-                    f"checkpoint-epoch-{epoch+1}-batch-{batch_idx+1}"
-                )
-                ppo_trainer.save_pretrained(checkpoint_path)
-                logger.info(f"Saved checkpoint to {checkpoint_path}")
+            rewards = reward_fn(batch_queries, batch_responses, tokenizer, reward_model)
+
+            # Update policy with PPO
+            ppo_trainer.step(query_tensors, response_tensors, rewards)
     
-    # Final save
-    logger.info("Training completed.")
-    ppo_trainer.save_pretrained(cfg["output_dir"])
-    logger.info(f"Model saved successfully to {cfg['output_dir']}")
+    logger.info("Training complete. Saving model...")
+    
+    # Save the fine-tuned model
+    policy_model.save_pretrained(cfg["output_dir"])
+    tokenizer.save_pretrained(cfg["output_dir"])
+    
+    logger.info(f"Model saved to {cfg['output_dir']}")
+    
+    # Free up memory
+    gc.collect()
+    torch.cuda.empty_cache()
+    
+    return cfg["output_dir"]
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a model with PPO using Unsloth and reward model")
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to the YAML configuration file",
-    )
+    parser = argparse.ArgumentParser(description="Train PPO model with config YAML")
+    parser.add_argument("--config", type=str, required=True, help="Path to the YAML configuration file")
     args = parser.parse_args()
-
-    train_model(args.config)
+    
+    output_dir = train_model(args.config)
+    
+    # Test the final model
+    cfg = load_config(args.config)
+    tokenizer = AutoTokenizer.from_pretrained(output_dir)
+    model = AutoModelForCausalLM.from_pretrained(output_dir)
+    
+    # Create a text generation pipeline
+    gen_pipeline = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        max_length=512,
+        do_sample=True,
+        top_p=0.9,
+    )
+    
+    # Test with example prompt if provided in config
+    if "test_prompt" in cfg:
+        results = gen_pipeline(cfg["test_prompt"], num_return_sequences=3)
+        
+        # Print results
+        for i, result in enumerate(results):
+            print(f"Generation {i + 1}:")
+            print(result["generated_text"])
+            print("-" * 50)
