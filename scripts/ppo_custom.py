@@ -75,12 +75,6 @@ cateory: {row["category"]}<|eot_id|>
 
 
 def initialize_models(cfg):
-    # Configuration for quantization if specified in config
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        # llm_int8_threshold=6.0,
-        # llm_int8_has_fp16_weight=False,
-    )
     
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg["policy_model_path"])
@@ -90,7 +84,6 @@ def initialize_models(cfg):
     # Load reward model
     reward_model = AutoModelForCausalLM.from_pretrained(
         cfg["reward_model_path"],
-        quantization_config=quantization_config,
         device_map="auto",
         torch_dtype=torch.float16,
     )
@@ -98,7 +91,6 @@ def initialize_models(cfg):
     # Load policy model
     policy_model = AutoModelForCausalLMWithValueHead.from_pretrained(
         cfg["policy_model_path"],
-        quantization_config=quantization_config,
         device_map="auto",
         torch_dtype=torch.float16,
     )
@@ -146,7 +138,6 @@ def train_model(config_path):
         batch_size=cfg["training"].get("batch_size", 4),
         mini_batch_size=cfg["training"].get("mini_batch_size", 1),
         gradient_accumulation_steps=cfg["training"]["gradient_accumulation_steps"],
-        optimize_cuda_cache=True,
         num_train_epochs=cfg["training"]["num_epochs"],
         lr_scheduler_type=cfg["training"]["lr_scheduler_type"],
         early_stopping=cfg["training"].get("early_stopping", True),
