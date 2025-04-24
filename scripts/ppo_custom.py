@@ -9,13 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
-from accelerate import FullyShardedDataParallelPlugin
 from datasets import Dataset
-from peft import LoraConfig, TaskType
-from torch.distributed.fsdp.fully_sharded_data_parallel import (
-    FullOptimStateDictConfig,
-    FullStateDictConfig,
-)
 from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM,
@@ -83,9 +77,9 @@ cateory: {row["category"]}<|eot_id|>
 def initialize_models(cfg):
     # Configuration for quantization if specified in config
     quantization_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        llm_int8_threshold=6.0,
-        llm_int8_has_fp16_weight=False,
+        load_in_4bit=True,
+        # llm_int8_threshold=6.0,
+        # llm_int8_has_fp16_weight=False,
     )
     
     # Load tokenizer
@@ -190,10 +184,10 @@ def train_model(config_path):
             for query in query_tensors:
                 response = ppo_trainer.generate(
                     query.unsqueeze(0),
-                    max_new_tokens=64,
+                    max_new_tokens=512,
                     do_sample=True,
-                    top_k=0,
-                    top_p=0.9,
+                    # top_k=0,
+                    # top_p=0.9,
                 )
                 response_tensors.append(response.squeeze())
 
